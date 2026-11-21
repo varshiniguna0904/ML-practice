@@ -1,0 +1,161 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans, DBSCAN
+from sklearn.metrics import silhouette_score
+np.random.seed(100)
+data1 = pd.DataFrame({
+    'Annual_Spending': np.random.normal(15000, 3000, 30),
+    'Visits_Per_Month': np.random.normal(2, 0.5, 30)
+})
+data2 = pd.DataFrame({
+    'Annual_Spending': np.random.normal(45000, 5000, 30),
+    'Visits_Per_Month': np.random.normal(7, 1, 30)
+})
+data3 = pd.DataFrame({
+    'Annual_Spending': np.random.normal(85000, 6000, 30),
+    'Visits_Per_Month': np.random.normal(12, 1, 30)
+})
+df = pd.concat([data1, data2, data3], ignore_index=True)
+outliers = pd.DataFrame({
+    'Annual_Spending': [30000, 110000, 5000],
+    'Visits_Per_Month': [14, 2, 13]
+})
+df = pd.concat([df, outliers], ignore_index=True)
+df['Annual_Spending'] = df['Annual_Spending'].clip(lower=1000)
+df['Visits_Per_Month'] = df['Visits_Per_Month'].clip(lower=1, upper=15)
+df.insert(0, 'Customer_ID', range(1, len(df) + 1))
+print("CUSTOMER DATASET")
+print(df.head(10))
+print("\nDataset Shape:", df.shape)
+print("\nDataset Summary")
+print(df.describe().round(2))
+features = ['Annual_Spending', 'Visits_Per_Month']
+scaler = StandardScaler()
+scaled_data = scaler.fit_transform(df[features])
+print("\nFEATURE SCALING COMPLETED")
+kmeans = KMeans(
+    n_clusters=3,
+    random_state=100,
+    n_init=10
+)
+df['Cluster'] = kmeans.fit_predict(scaled_data)
+print("\nK-MEANS CLUSTERING RESULTS")
+print(df.head(15))
+plt.figure(figsize=(9, 6))
+for cluster in sorted(df['Cluster'].unique()):
+    group = df[df['Cluster'] == cluster]
+    plt.scatter(
+        group['Annual_Spending'],
+        group['Visits_Per_Month'],
+        label=f'Cluster {cluster}',
+        s=65
+    )
+plt.title('Customer Segmentation - K-Means')
+plt.xlabel('Annual Spending')
+plt.ylabel('Visits Per Month')
+plt.legend()
+plt.grid(alpha=0.3)
+plt.show()
+summary = df.groupby('Cluster').agg(
+    Average_Spending=('Annual_Spending', 'mean'),
+    Average_Visits=('Visits_Per_Month', 'mean'),
+    Total_Customers=('Customer_ID', 'count')
+)
+print("\nCLUSTER-WISE ANALYSIS")
+print(summary.round(2))
+inertia_values = []
+for k in range(2, 5):
+    model = KMeans(
+        n_clusters=k,
+        random_state=100,
+        n_init=10
+    )
+    model.fit(scaled_data)
+    inertia_values.append(model.inertia_)
+plt.figure(figsize=(8, 5))
+plt.plot(
+    range(2, 5),
+    inertia_values,
+    marker='o',
+    linewidth=2
+)
+plt.title('Elbow Method')
+plt.xlabel('Number of Clusters (K)')
+plt.ylabel('Inertia')
+plt.xticks(range(2, 5))
+plt.grid(alpha=0.3)
+plt.show()
+scores = []
+print("\nSILHOUETTE SCORE COMPARISON")
+for k in range(2, 5):
+    model = KMeans(
+        n_clusters=k,
+        random_state=100,
+        n_init=10
+    )
+    labels = model.fit_predict(scaled_data)
+    score = silhouette_score(scaled_data, labels)
+    scores.append(score)
+    print(f"K = {k} | Silhouette Score = {score:.4f}")
+best_k = list(range(2, 5))[np.argmax(scores)]
+print("\nBest K Value:", best_k)
+dbscan = DBSCAN(
+    eps=0.4,
+    min_samples=4
+)
+df['DBSCAN_Cluster'] = dbscan.fit_predict(scaled_data)
+print("\nDBSCAN RESULTS")
+print(df[['Customer_ID', 'Annual_Spending',
+          'Visits_Per_Month', 'DBSCAN_Cluster']].tail(15))
+plt.figure(figsize=(9, 6))
+for cluster in sorted(df['DBSCAN_Cluster'].unique()):
+    group = df[df['DBSCAN_Cluster'] == cluster]
+    label = 'Noise (-1)' if cluster == -1 else f'Cluster {cluster}'
+    plt.scatter(
+        group['Annual_Spending'],
+        group['Visits_Per_Month'],
+        label=label,
+        s=65
+    )
+plt.title('DBSCAN Customer Segmentation')
+plt.xlabel('Annual Spending')
+plt.ylabel('Visits Per Month')
+plt.legend()
+plt.grid(alpha=0.3)
+plt.show()
+print("\nDBSCAN CLUSTER COUNTS")
+print(df['DBSCAN_Cluster'].value_counts().sort_index())
+noise = (df['DBSCAN_Cluster'] == -1).sum()
+print("\nNoise Points:", noise)
+print("-1 indicates noise or outlier customers.")
+print("\nCUSTOMER SEGMENT DESCRIPTIONS")
+for cluster in summary.sort_values('Average_Spending').index:
+    spending = summary.loc[cluster, 'Average_Spending']
+    visits = summary.loc[cluster, 'Average_Visits']
+    count = summary.loc[cluster, 'Total_Customers']
+    if spending < 30000:
+        name = "Budget Customers"
+        description = "Customers with lower annual spending and fewer visits."
+    elif spending < 70000:
+        name = "Regular Customers"
+        description = "Customers with moderate spending and regular visits."
+    else:
+        name = "Premium Customers"
+        description = "Customers with higher spending and frequent visits."
+    print(f"\nCluster {cluster}: {name}")
+    print("Average Spending: Rs.", round(spending, 2))
+    print("Average Monthly Visits:", round(visits, 2))
+    print("Total Customers:", int(count))
+    print("Description:", description)
+print("\n================================")
+print("CUSTOMER SEGMENTATION COMPLETED")
+print("================================")
+print("Dataset Created Successfully")
+print("Feature Scaling Completed")
+print("K-Means Clustering Completed")
+print("Elbow Method Completed")
+print("Silhouette Comparison Completed")
+print("DBSCAN Clustering Completed")
+print("Customer Segments Identified")
