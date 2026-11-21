@@ -1,0 +1,80 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+customers = pd.DataFrame({
+    "AnnualSpend": [20,22,25,27,30,75,78,80,85,88,40,42],
+    "VisitsPerMonth": [2,3,2,4,3,8,9,8,10,9,4,5]
+})
+plt.scatter(customers["AnnualSpend"],
+            customers["VisitsPerMonth"])
+plt.xlabel("Annual spend (hundreds)")
+plt.ylabel("Visits per month")
+plt.title("Customer data before clustering")
+plt.show()
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(customers)
+km = KMeans(n_clusters=3, random_state=42, n_init=10)
+customers["Cluster"] = km.fit_predict(X_scaled)
+plt.scatter(customers["AnnualSpend"],
+            customers["VisitsPerMonth"],
+            c=customers["Cluster"])
+plt.xlabel("Annual spend")
+plt.ylabel("Visits per month")
+plt.title("K-Means customer segments")
+plt.show()
+print(customers)
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+for k in range(2, 6):
+    model = KMeans(n_clusters=k, random_state=42, n_init=10)
+    labels = model.fit_predict(X_scaled)
+    print(k,
+          "inertia:", round(model.inertia_, 2),
+          "silhouette:", round(silhouette_score(X_scaled, labels), 3))
+    from sklearn.cluster import DBSCAN
+
+db = DBSCAN(eps=0.8, min_samples=2)
+db_labels = db.fit_predict(X_scaled)
+
+print("Cluster labels:", db_labels)
+print("Noise points:", sum(db_labels == -1))
+
+plt.scatter(customers["AnnualSpend"],
+            customers["VisitsPerMonth"],
+            c=db_labels)
+plt.xlabel("Annual spend")
+plt.ylabel("Visits per month")
+plt.title("DBSCAN results (-1 means noise)")
+from sklearn.datasets import load_iris
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+import matplotlib.pyplot as plt
+
+iris = load_iris()
+X_iris = StandardScaler().fit_transform(iris.data)
+
+pca = PCA(n_components=2)
+X_2d = pca.fit_transform(X_iris)
+
+print("Explained variance:",
+      pca.explained_variance_ratio_.round(3))
+plt.scatter(X_2d[:,0], X_2d[:,1], c=iris.target)
+plt.xlabel("PC1"); plt.ylabel("PC2")
+plt.title("Iris data visualised using PCA")
+plt.show()
+from sklearn.ensemble import IsolationForest
+import numpy as np
+
+transactions = np.array([
+    [20, 2], [22, 3], [18, 2], [25, 3],
+    [21, 2], [23, 4], [19, 3], [250, 20]
+])
+
+detector = IsolationForest(contamination=0.12, random_state=42)
+labels = detector.fit_predict(transactions)
+
+for row, label in zip(transactions, labels):
+    print(row, "Anomaly" if label == -1 else "Normal")
